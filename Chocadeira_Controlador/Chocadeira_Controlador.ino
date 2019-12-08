@@ -19,10 +19,21 @@ Adafruit_BME280 bme;
 // Variaveis globais
 float temperatura;
 float umidade;
+float MAX_Temperatura = 37.8;
+float MIN_Temperatura = 37.4;
+
+bool lampada = false;
+bool fita_led = false;
+bool ventilador = false;
+bool ventilador_pwm = false;
 
 void setup() {
   // Abre comunicacao com o bluetooth
   Serial.begin(9600);
+
+  Serial.println(MAX_Temperatura);
+  Serial.println(MIN_Temperatura);
+  
   // Verifica se BME esta conectado
   if (!bme.begin(0x76)) {
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
@@ -36,6 +47,11 @@ void setup() {
   // Demais pinos digitais
   pinMode(PWM_Ventilador, OUTPUT);
   pinMode(Switch_Porta,   INPUT);
+  //Desliga Reles
+  digitalWrite(Lampada, HIGH);
+  digitalWrite(Ventilador_PWM, HIGH);
+  digitalWrite(Ventilador, HIGH);
+  digitalWrite(Fita_LED, HIGH);
 }
 
 void loop() {
@@ -59,37 +75,49 @@ void Ler_Dados_Sensor(){
 }
 
 void Controla_Temperatura(){
-  if(temperatura < 37.5f){
-    // Liga lampada de aquecimento e desliga ventilador de exaustão
-    digitalWrite(Lampada, LOW);
-    digitalWrite(Ventilador_PWM, HIGH);
-  }else 
-  if(temperatura == 37.5f){
-    // Desliga ampada de aquecimento e ventilador de exaustão
+  Serial.println("Controle da Temperatura");
+  if(lampada && temperatura > MAX_Temperatura){
     digitalWrite(Lampada, HIGH);
-    digitalWrite(Ventilador_PWM, HIGH);
-  }else
-  if(temperatura > 37.5f){
-    // Desliga ampada de aquecimento e liga ventilador de exaustão
-    digitalWrite(Lampada, HIGH);
+    lampada = false;
     digitalWrite(Ventilador_PWM, LOW);
+    ventilador_pwm = true;
+    Serial.println("Quente");
+  }
+  if(!lampada && ventilador_pwm && temperatura <= MAX_Temperatura){
+    digitalWrite(Lampada, HIGH);
+    lampada = false;
+    digitalWrite(Ventilador_PWM, HIGH);
+    ventilador_pwm = false;
+    Serial.println("Morno");
+  }
+  if(!lampada && !ventilador_pwm && temperatura < MIN_Temperatura){
+    digitalWrite(Lampada, LOW);
+    lampada = true;
+    digitalWrite(Ventilador_PWM, HIGH);
+    ventilador_pwm = false;
+    Serial.println("Frio");
   }
 }
 
 void Controla_Umidade(){
+  Serial.println("Controle da Umidade");
   if(umidade <= 60){
     // Liga Ventilador
+    Serial.println("Umidificando");
     digitalWrite(Ventilador, LOW);
+    ventilador = true;
   }else {
     // Desliga Ventilador
+    Serial.println("Desumidificando");
     digitalWrite(Ventilador, HIGH);
+    ventilador = false;
   }
 }
 
 void Luz_Ambiente(){
-  if(Switch_Porta == HIGH){
+  //if(Switch_Porta == HIGH){ //Troca pra HIGH quando instalar o Switch
     digitalWrite(Fita_LED, LOW);
-  }else{
-    digitalWrite(Fita_LED, HIGH);
-  }
+  //}else{
+    //digitalWrite(Fita_LED, HIGH);
+  //}
 }
